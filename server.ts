@@ -7,8 +7,17 @@ import dotenv from "dotenv";
 
 import { requireAuth, AuthRequest } from "./src/middleware/auth.ts";
 import { adminAuth } from "./src/lib/firebase-admin.ts";
-import firebaseConfig from "./firebase-applet-config.json" with { type: "json" };
 import { db, isDbConfigured } from "./src/db/index.ts";
+
+let firebaseConfig: any = {};
+try {
+  const cfgPath = path.resolve(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(cfgPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
+  }
+} catch (e) {
+  console.warn("Failed to read firebase-applet-config.json in server.ts:", e);
+}
 import { users, wishlists, wishlistItems } from "./src/db/schema.ts";
 import { eq, ne } from "drizzle-orm";
 
