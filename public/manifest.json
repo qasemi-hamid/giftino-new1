@@ -1,0 +1,27 @@
+{
+  "name": "Giftino - Go",
+  "short_name": "Go",
+  "description": "گیفتی‌نو - ثبت آرزو و رزرو هوشمند کادو بدون هدیه تکراری",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["lifestyle", "utilities"],
+  "dir": "rtl",
+  "lang": "fa"
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Giftino",
+  "description": "Premium collaborative wishlist and gift coordination platform featuring custom AI gift suggestions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

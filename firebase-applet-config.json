@@ -1,0 +1,11 @@
+{
+  "projectId": "giftino-app",
+  "appId": "1:21715681227:web:4ffc8ea162e4979a0dc04e",
+  "apiKey": "AIzaSyB-csZCSh_7_tTAkOOM_eR8IrtXyWS1zeA",
+  "authDomain": "giftino-app.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "giftino-app.firebasestorage.app",
+  "messagingSenderId": "21715681227",
+  "measurementId": "",
+  "recaptchaSiteKey": ""
+}
