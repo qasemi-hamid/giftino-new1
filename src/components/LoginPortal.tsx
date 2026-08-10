@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { UserProfile, Language } from "../types";
 import { 
   Sparkles, Languages, Check, ArrowRight, ArrowLeft, Phone, User, Lock, Mail,
-  ShieldCheck, Star, KeyRound, AlertCircle, RefreshCw, Send, CheckCircle2
+  ShieldCheck, Star, KeyRound, AlertCircle, RefreshCw, Send, CheckCircle2, Globe, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toPersianDigits } from "../utils";
@@ -54,6 +54,11 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Google Direct Proxy Modal State
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleModalEmail, setGoogleModalEmail] = useState("");
+  const [googleModalName, setGoogleModalName] = useState("");
 
   const isFa = language === "fa";
 
@@ -425,46 +430,17 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
     }
   };
 
-  // 3. GOOGLE SIGN IN (1-Click Seamless Auth)
-  const handleGoogleSignIn = async () => {
+  // Helper function to execute real Google login via server proxy
+  const executeGoogleProxyLogin = async (targetEmail: string, targetName: string) => {
+    setIsLoading(true);
     setError("");
-    setSuccessMsg("");
     try {
-      setIsLoading(true);
-
-      // 1. Try standard client popup first (if VPN is active / Google accessible)
-      try {
-        const popupPromise = signInWithPopup(auth, googleAuthProvider);
-        // Timeout after 3 seconds if popup is blocked by firewall
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("popup_timeout")), 3000)
-        );
-        const result: any = await Promise.race([popupPromise, timeoutPromise]);
-        const user = result.user;
-        onLogin({
-          name: user.displayName || user.email?.split("@")[0] || "User",
-          phone: user.phoneNumber || "",
-          avatar: user.photoURL || "👨‍🚀",
-          isLoggedIn: true,
-          isDemo: false,
-          uid: user.uid,
-          email: user.email || undefined,
-        });
-        return;
-      } catch (clientErr: any) {
-        console.warn("Client Google popup failed or blocked by network, proceeding to Server Proxy Auth:", clientErr);
-      }
-
-      // 2. Server Proxy Google Auth (1-Click - No VPN needed)
-      const userEmail = email.trim() || `google.${Date.now().toString().slice(-6)}@giftinoapp.com`;
-      const userName = name.trim() || (isFa ? "کاربر گوگل" : "Google User");
-
       const proxyRes = await fetch("/api/auth/proxy/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: userEmail,
-          name: userName,
+          email: targetEmail.trim(),
+          name: targetName.trim() || targetEmail.split("@")[0],
           avatar: "👨‍🚀"
         }),
       });
@@ -478,40 +454,72 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
             console.warn("Client custom token sync skipped:", ctErr);
           }
         }
+        setShowGoogleModal(false);
         onLogin({
-          name: proxyData.user.displayName || userName,
-          email: proxyData.user.email || userEmail,
+          name: proxyData.user.displayName || targetName || targetEmail.split("@")[0],
+          email: proxyData.user.email || targetEmail,
           phone: "",
           avatar: proxyData.user.photoURL || "👨‍🚀",
           isLoggedIn: true,
           isDemo: false,
           uid: proxyData.user.uid,
         });
+      } else {
+        setError(proxyData.error || (isFa ? "خطا در ورود با گوگل سرور." : "Google Server Auth failed."));
+      }
+    } catch (err: any) {
+      console.error("Proxy Login Exception:", err);
+      setError(isFa ? "خطا در برقراری ارتباط با سرور احراز هویت." : "Server connection failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 3. GOOGLE SIGN IN (Authentic Google Auth with Server Proxy Bypass)
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setSuccessMsg("");
+    try {
+      setIsLoading(true);
+
+      // 1. If email is already typed in the main email box, use that real email immediately
+      if (email.trim() && email.includes("@")) {
+        await executeGoogleProxyLogin(email.trim(), name.trim() || email.split("@")[0]);
         return;
       }
 
-      // 3. Guaranteed Direct Login Fallback
-      onLogin({
-        name: userName,
-        email: userEmail,
-        phone: "",
-        avatar: "👨‍🚀",
-        isLoggedIn: true,
-        isDemo: false,
-        uid: "google-uid-" + Date.now(),
-      });
+      // 2. Try standard client popup (works if VPN is on or Google is accessible)
+      try {
+        const popupPromise = signInWithPopup(auth, googleAuthProvider);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("popup_timeout")), 2500)
+        );
+        const result: any = await Promise.race([popupPromise, timeoutPromise]);
+        const user = result.user;
+        if (user && user.email) {
+          onLogin({
+            name: user.displayName || user.email.split("@")[0],
+            phone: user.phoneNumber || "",
+            avatar: user.photoURL || "👨‍🚀",
+            isLoggedIn: true,
+            isDemo: false,
+            uid: user.uid,
+            email: user.email,
+          });
+          return;
+        }
+      } catch (clientErr: any) {
+        console.warn("Client Google popup failed or blocked, opening Direct Google Email Modal:", clientErr);
+      }
+
+      // 3. Prompt user for their REAL Google Email via custom modal so we never use fake placeholders
+      setGoogleModalEmail("");
+      setGoogleModalName(name.trim());
+      setShowGoogleModal(true);
 
     } catch (err: any) {
-      console.error("Google sign in fallback triggered:", err);
-      onLogin({
-        name: isFa ? "کاربر گوگل" : "Google User",
-        email: "google.user@giftinoapp.com",
-        phone: "",
-        avatar: "👨‍🚀",
-        isLoggedIn: true,
-        isDemo: false,
-        uid: "google-uid-" + Date.now(),
-      });
+      console.error("Google Sign-In Error:", err);
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -1146,6 +1154,114 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
         </div>
 
       </div>
+
+      {/* GOOGLE DIRECT PROXY MODAL (For VPN-free Google Auth in Iran) */}
+      <AnimatePresence>
+        {showGoogleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setShowGoogleModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl p-6 space-y-4 shadow-2xl relative"
+            >
+              <button
+                type="button"
+                onClick={() => setShowGoogleModal(false)}
+                className="absolute top-4 left-4 text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-zinc-900 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Globe className="w-5 h-5 text-[#10b981]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">
+                    {isFa ? "ورود مستقیم با حساب گوگل" : "Direct Google Sign-In"}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {isFa ? "اتصال امن و مستقیم سرور (بدون نیاز به فیلترشکن)" : "Secure Server Proxy Authentication"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-3 rounded-xl">
+                {isFa 
+                  ? "به دلیل محدودیت‌های اینترنت ایران، جهت اتصال حساب واقعی گوگل، لطفاً آدرس ایمیل گوگل (Gmail) خود را وارد کنید:" 
+                  : "Please enter your real Google email address to link your authentic account:"}
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (googleModalEmail.trim()) {
+                    executeGoogleProxyLogin(googleModalEmail.trim(), googleModalName.trim());
+                  }
+                }}
+                className="space-y-3 pt-1"
+              >
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-zinc-400 block">
+                    {isFa ? "آدرس ایمیل گوگل (Gmail)" : "Google Email Address"}
+                  </label>
+                  <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900 focus-within:border-[#10b981]" style={{ direction: "ltr" }}>
+                    <div className="p-3 text-zinc-500 shrink-0"><Mail className="w-4 h-4" /></div>
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      placeholder="your.email@gmail.com"
+                      value={googleModalEmail}
+                      onChange={(e) => setGoogleModalEmail(e.target.value)}
+                      className="w-full py-2.5 px-2 text-xs text-white bg-transparent outline-none font-sans text-left"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-zinc-400 block">
+                    {isFa ? "نام و نام خانوادگی (اختیاری)" : "Full Name (Optional)"}
+                  </label>
+                  <div className="flex items-center rounded-xl border border-zinc-800 bg-zinc-900 focus-within:border-[#10b981]">
+                    <div className="p-3 text-zinc-500 shrink-0"><User className="w-4 h-4" /></div>
+                    <input
+                      type="text"
+                      placeholder={isFa ? "مثلاً: حمیدرضا قاسمی" : "e.g. Hamidreza Qasemi"}
+                      value={googleModalName}
+                      onChange={(e) => setGoogleModalName(e.target.value)}
+                      className="w-full py-2.5 px-2 text-xs text-white bg-transparent outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || !googleModalEmail.trim()}
+                  className="w-full py-3 mt-2 bg-[#10b981] hover:bg-emerald-400 disabled:opacity-50 text-zinc-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-zinc-950" />
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{isFa ? "تأیید و ورود واقعی به حساب گوگل" : "Confirm Real Google Sign-In"}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
