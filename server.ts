@@ -1051,7 +1051,11 @@ app.post("/api/sync-calendar", async (req: any, res: any) => {
 
 // Start express server with Vite middleware or static files
 async function start() {
-  const isDev = process.env.NODE_ENV !== "production";
+  const distPath = path.join(process.cwd(), "dist");
+  const hasDist = fs.existsSync(path.join(distPath, "index.html"));
+
+  // Force PROD mode if dist/index.html exists or NODE_ENV=production, unless explicitly NODE_ENV=development
+  const isDev = process.env.NODE_ENV === "development" || (!hasDist && process.env.NODE_ENV !== "production");
 
   if (isDev) {
     console.log("Starting server in development mode (Vite middleware)...");
@@ -1062,8 +1066,10 @@ async function start() {
     app.use(vite.middlewares);
   } else {
     console.log("Starting server in production mode (static files from dist)...");
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '1d',
+      etag: true,
+    }));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

@@ -378,14 +378,21 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
       }
     } catch (err: any) {
       console.error("Google sign in failed:", err);
+      if (err?.code === "auth/unauthorized-domain") {
+        setError(
+          isFa 
+            ? "دامنه giftinoapp.com در پنل فایربیس در بخش Authorized Domains ثبت نشده است. جهت ورود واقعی گوگل، این دامنه را در کنسول فایربیس اضافه کنید."
+            : "Domain giftinoapp.com is not authorized in Firebase Console (Authorized Domains)."
+        );
+        return;
+      }
       if (
         err?.code === "auth/network-request-failed" ||
-        err?.code === "auth/unauthorized-domain" ||
         err?.code === "auth/api-key-not-valid" ||
         err?.message?.includes("network")
       ) {
         onLogin({
-          name: isFa ? "کاربر گوگل" : "Google User",
+          name: isFa ? "کاربر گوگل (آفلاین)" : "Google User (Offline)",
           email: "google-user@example.com",
           phone: "",
           avatar: "👨‍🚀",
