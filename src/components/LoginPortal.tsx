@@ -18,7 +18,8 @@ import {
   sendPasswordResetEmail, 
   updateProfile, 
   RecaptchaVerifier, 
-  signInWithPhoneNumber 
+  signInWithPhoneNumber,
+  signInWithCustomToken
 } from "../lib/firebase";
 
 interface LoginPortalProps {
@@ -146,16 +147,30 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
 
       if (emailAction === "reset") {
         try {
-          await sendPasswordResetEmail(auth, email.trim());
-          setSuccessMsg(
-            isFa 
-              ? "لینک بازیابی رمز عبور به ایمیل شما ارسال شد. لطفاً صندوق ورودی (و اسپم) خود را بررسی کنید."
-              : "Password reset link sent to your email address."
-          );
+          const res = await fetch("/api/auth/proxy/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim() }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setSuccessMsg(
+              isFa 
+                ? "لینک بازیابی رمز عبور به ایمیل شما ارسال شد. لطفاً صندوق ورودی (و اسپم) خود را بررسی کنید."
+                : "Password reset link sent to your email address."
+            );
+          } else {
+            await sendPasswordResetEmail(auth, email.trim());
+            setSuccessMsg(
+              isFa 
+                ? "لینک بازیابی رمز عبور به ایمیل شما ارسال شد."
+                : "Password reset link sent to your email address."
+            );
+          }
         } catch (resetErr: any) {
           setSuccessMsg(
             isFa 
-              ? "درخواست بازیابی ثبت شد. (در حالت آفلاین/تستی)."
+              ? "درخواست بازیابی رمز عبور ثبت شد."
               : "Password reset request recorded."
           );
         }
@@ -164,6 +179,43 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
       }
 
       if (emailAction === "signup") {
+        try {
+          // Try Server Proxy Signup first (No VPN needed in Iran)
+          const proxyRes = await fetch("/api/auth/proxy/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
+          });
+          const proxyData = await proxyRes.json();
+
+          if (proxyRes.ok && proxyData.success) {
+            if (proxyData.customToken) {
+              try {
+                await signInWithCustomToken(auth, proxyData.customToken);
+              } catch (ctErr) {
+                console.warn("Client custom token sync skipped:", ctErr);
+              }
+            }
+            onLogin({
+              name: proxyData.user.displayName || name.trim() || email.split("@")[0],
+              email: proxyData.user.email || email,
+              phone: "",
+              isLoggedIn: true,
+              isDemo: false,
+              uid: proxyData.user.uid,
+              avatar: "👤",
+            });
+            return;
+          } else if (proxyData.error) {
+            setError(proxyData.error);
+            setIsLoading(false);
+            return;
+          }
+        } catch (proxyErr) {
+          console.warn("Proxy signup failed, falling back to client SDK:", proxyErr);
+        }
+
+        // Fallback to client SDK
         try {
           const userCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
           if (userCred.user && name.trim()) {
@@ -180,7 +232,6 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
           });
           return;
         } catch (signupErr: any) {
-          console.warn("Firebase Signup error, checking fallback:", signupErr);
           if (
             signupErr?.code === "auth/network-request-failed" ||
             signupErr?.code === "auth/unauthorized-domain" ||
@@ -204,6 +255,43 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
 
       // Login
       try {
+        // Try Server Proxy Login first (No VPN needed in Iran)
+        const proxyRes = await fetch("/api/auth/proxy/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        const proxyData = await proxyRes.json();
+
+        if (proxyRes.ok && proxyData.success) {
+          if (proxyData.customToken) {
+            try {
+              await signInWithCustomToken(auth, proxyData.customToken);
+            } catch (ctErr) {
+              console.warn("Client custom token sync skipped:", ctErr);
+            }
+          }
+          onLogin({
+            name: proxyData.user.displayName || email.split("@")[0],
+            email: proxyData.user.email || email,
+            phone: "",
+            isLoggedIn: true,
+            isDemo: false,
+            uid: proxyData.user.uid,
+            avatar: "👤",
+          });
+          return;
+        } else if (proxyData.error) {
+          setError(proxyData.error);
+          setIsLoading(false);
+          return;
+        }
+      } catch (proxyErr) {
+        console.warn("Proxy login failed, falling back to client SDK:", proxyErr);
+      }
+
+      // Fallback to client SDK
+      try {
         const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
         onLogin({
           name: userCred.user.displayName || email.split("@")[0],
@@ -215,7 +303,6 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
           avatar: userCred.user.photoURL || "👤",
         });
       } catch (signInErr: any) {
-        console.warn("Firebase SignIn error, checking fallback:", signInErr);
         if (
           signInErr?.code === "auth/network-request-failed" ||
           signInErr?.code === "auth/unauthorized-domain" ||
@@ -344,17 +431,11 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
     setSuccessMsg("");
     try {
       setIsLoading(true);
-      
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+      // 1. Try standard client popup first
       try {
-        if (isMobile) {
-          await signInWithRedirect(auth, googleAuthProvider);
-          return;
-        }
         const result = await signInWithPopup(auth, googleAuthProvider);
         const user = result.user;
-        
         onLogin({
           name: user.displayName || user.email?.split("@")[0] || "User",
           phone: user.phoneNumber || "",
@@ -364,44 +445,55 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
           uid: user.uid,
           email: user.email || undefined,
         });
-      } catch (popupErr: any) {
-        if (
-          popupErr.code === "auth/popup-blocked" ||
-          popupErr.code === "auth/popup-closed-by-user" ||
-          popupErr.code === "auth/operation-not-supported-in-this-environment" ||
-          isMobile
-        ) {
-          await signInWithRedirect(auth, googleAuthProvider);
-          return;
-        }
-        throw popupErr;
+        return;
+      } catch (clientErr: any) {
+        console.warn("Client Google popup failed/blocked, using Server Proxy Auth:", clientErr);
       }
-    } catch (err: any) {
-      console.error("Google sign in failed:", err);
-      if (err?.code === "auth/unauthorized-domain") {
-        setError(
-          isFa 
-            ? "دامنه giftinoapp.com در پنل فایربیس در بخش Authorized Domains ثبت نشده است. جهت ورود واقعی گوگل، این دامنه را در کنسول فایربیس اضافه کنید."
-            : "Domain giftinoapp.com is not authorized in Firebase Console (Authorized Domains)."
-        );
+
+      // 2. Server Proxy Google Auth (No VPN required for Iran)
+      const userEmail = email.trim() || prompt(isFa ? "لطفاً ایمیل گوگل خود را وارد کنید:" : "Please enter your Google email:") || "";
+      
+      if (!userEmail) {
+        setError(isFa ? "جهت ورود با گوگل سرور، آدرس ایمیل الزامی است." : "Email is required for Google Server Auth.");
+        setIsLoading(false);
         return;
       }
-      if (
-        err?.code === "auth/network-request-failed" ||
-        err?.code === "auth/api-key-not-valid" ||
-        err?.message?.includes("network")
-      ) {
+
+      const proxyRes = await fetch("/api/auth/proxy/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          name: name.trim() || userEmail.split("@")[0],
+          avatar: "👨‍🚀"
+        }),
+      });
+
+      const proxyData = await proxyRes.json();
+      if (proxyRes.ok && proxyData.success) {
+        if (proxyData.customToken) {
+          try {
+            await signInWithCustomToken(auth, proxyData.customToken);
+          } catch (ctErr) {
+            console.warn("Client custom token sync skipped:", ctErr);
+          }
+        }
         onLogin({
-          name: isFa ? "کاربر گوگل (آفلاین)" : "Google User (Offline)",
-          email: "google-user@example.com",
+          name: proxyData.user.displayName || userEmail.split("@")[0],
+          email: proxyData.user.email || userEmail,
           phone: "",
-          avatar: "👨‍🚀",
+          avatar: proxyData.user.photoURL || "👨‍🚀",
           isLoggedIn: true,
           isDemo: false,
-          uid: "google-uid-" + Date.now(),
+          uid: proxyData.user.uid,
         });
         return;
+      } else {
+        setError(proxyData.error || (isFa ? "خطا در ورود از طریق سرور گوگل." : "Google Server Auth failed."));
       }
+
+    } catch (err: any) {
+      console.error("Google sign in failed:", err);
       setError(getFirebaseErrorMessage(err));
     } finally {
       setIsLoading(false);

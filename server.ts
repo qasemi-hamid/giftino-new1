@@ -6,6 +6,8 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
 import { requireAuth, AuthRequest } from "./src/middleware/auth.ts";
+import { adminAuth } from "./src/lib/firebase-admin.ts";
+import firebaseConfig from "./firebase-applet-config.json" with { type: "json" };
 import { db, isDbConfigured } from "./src/db/index.ts";
 import { users, wishlists, wishlistItems } from "./src/db/schema.ts";
 import { eq, ne } from "drizzle-orm";
@@ -45,6 +47,196 @@ app.get("/api/health", (req, res) => {
     hasApiKey: !!process.env.GEMINI_API_KEY,
     timestamp: new Date().toISOString(),
   });
+});
+
+// ==========================================
+// SERVER-SIDE AUTH PROXY FOR USERS IN IRAN (NO VPN NEEDED)
+// ==========================================
+
+// 1. Email Sign In Proxy
+app.post("/api/auth/proxy/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "ایمیل و رمز عبور الزامی است." });
+    }
+
+    const apiKey = firebaseConfig.apiKey;
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        returnSecureToken: true,
+      }),
+    });
+
+    const data: any = await response.json();
+    if (!response.ok || data.error) {
+      const msg = data.error?.message || "نام کاربری یا رمز عبور اشتباه است.";
+      return res.status(400).json({ error: msg });
+    }
+
+    // Generate Custom Token for seamless client auth
+    const customToken = await adminAuth.createCustomToken(data.localId);
+
+    res.json({
+      success: true,
+      idToken: data.idToken,
+      refreshToken: data.refreshToken,
+      customToken,
+      user: {
+        uid: data.localId,
+        email: data.email,
+        displayName: data.displayName || email.split("@")[0],
+      },
+    });
+  } catch (err: any) {
+    console.error("Auth Proxy Login Error:", err);
+    res.status(500).json({ error: "خطا در برقراری ارتباط با سرور احراز هویت." });
+  }
+});
+
+// 2. Email Sign Up Proxy
+app.post("/api/auth/proxy/signup", async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "ایمیل و رمز عبور الزامی است." });
+    }
+
+    const apiKey = firebaseConfig.apiKey;
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        returnSecureToken: true,
+      }),
+    });
+
+    const data: any = await response.json();
+    if (!response.ok || data.error) {
+      const msg = data.error?.message || "خطا در ثبت نام حساب جدید.";
+      return res.status(400).json({ error: msg });
+    }
+
+    // Update display name via Admin SDK
+    if (name && name.trim()) {
+      try {
+        await adminAuth.updateUser(data.localId, { displayName: name.trim() });
+      } catch (e) {
+        console.warn("Failed to update display name:", e);
+      }
+    }
+
+    const customToken = await adminAuth.createCustomToken(data.localId);
+
+    res.json({
+      success: true,
+      idToken: data.idToken,
+      customToken,
+      user: {
+        uid: data.localId,
+        email: data.email,
+        displayName: name || email.split("@")[0],
+      },
+    });
+  } catch (err: any) {
+    console.error("Auth Proxy Signup Error:", err);
+    res.status(500).json({ error: "خطا در ثبت‌نام حساب جدید." });
+  }
+});
+
+// 3. Google Sign In Proxy
+app.post("/api/auth/proxy/google", async (req, res) => {
+  try {
+    const { email, name, avatar, googleIdToken } = req.body;
+    
+    let targetEmail = email;
+    let targetName = name || "Google User";
+    let targetAvatar = avatar || "👨‍🚀";
+
+    // If googleIdToken is provided, verify it with Google's tokeninfo
+    if (googleIdToken) {
+      try {
+        const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${googleIdToken}`);
+        if (verifyRes.ok) {
+          const payload: any = await verifyRes.json();
+          if (payload.email) {
+            targetEmail = payload.email;
+            targetName = payload.name || targetName;
+            targetAvatar = payload.picture || targetAvatar;
+          }
+        }
+      } catch (vErr) {
+        console.warn("Token verification skipped/failed:", vErr);
+      }
+    }
+
+    if (!targetEmail) {
+      return res.status(400).json({ error: "آدرس ایمیل برای ورود گوگل دریافت نشد." });
+    }
+
+    let userRecord;
+    try {
+      userRecord = await adminAuth.getUserByEmail(targetEmail);
+    } catch (notFound) {
+      // Create user in Firebase Admin
+      userRecord = await adminAuth.createUser({
+        email: targetEmail,
+        displayName: targetName,
+        photoURL: targetAvatar.startsWith("http") ? targetAvatar : undefined,
+      });
+    }
+
+    const customToken = await adminAuth.createCustomToken(userRecord.uid);
+
+    res.json({
+      success: true,
+      customToken,
+      user: {
+        uid: userRecord.uid,
+        email: userRecord.email,
+        displayName: userRecord.displayName || targetName,
+        photoURL: userRecord.photoURL || targetAvatar,
+      },
+    });
+  } catch (err: any) {
+    console.error("Google Auth Proxy Error:", err);
+    res.status(500).json({ error: "خطا در ورود از طریق گوگل سرور." });
+  }
+});
+
+// 4. Reset Password Proxy
+app.post("/api/auth/proxy/reset-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "ایمیل الزامی است." });
+    }
+
+    const apiKey = firebaseConfig.apiKey;
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email: email.trim(),
+      }),
+    });
+
+    const data: any = await response.json();
+    if (!response.ok || data.error) {
+      return res.status(400).json({ error: data.error?.message || "خطا در ارسال ایمیل بازیابی." });
+    }
+
+    res.json({ success: true, message: "لینک بازیابی رمز عبور ارسال شد." });
+  } catch (err: any) {
+    res.status(500).json({ error: "خطا در بازیابی رمز عبور." });
+  }
 });
 
 // Sync User Data to PostgreSQL

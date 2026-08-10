@@ -14,6 +14,7 @@ import {
   signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
+  signInWithCustomToken,
   ConfirmationResult
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -38,7 +39,8 @@ export {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signInWithCustomToken
 };
 export type { ConfirmationResult };
 export default app;
