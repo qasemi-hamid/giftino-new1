@@ -451,10 +451,14 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
       }
 
       // 2. Server Proxy Google Auth (No VPN required for Iran)
-      const userEmail = email.trim() || prompt(isFa ? "لطفاً ایمیل گوگل خود را وارد کنید:" : "Please enter your Google email:") || "";
+      const userEmail = email.trim();
       
       if (!userEmail) {
-        setError(isFa ? "جهت ورود با گوگل سرور، آدرس ایمیل الزامی است." : "Email is required for Google Server Auth.");
+        setError(
+          isFa 
+            ? "جهت ورود مستقیم بدون فیلترشکن، لطفاً ابتدا آدرس ایمیل خود را در کادر بالای فرم وارد کرده و سپس روی دکمه «ورود با گوگل» کلیک کنید." 
+            : "To sign in without VPN, please enter your email address in the field above first, then click 'Sign in with Google'."
+        );
         setIsLoading(false);
         return;
       }
