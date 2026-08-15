@@ -43,7 +43,47 @@
   }
 }
 
-/* Custom styles for luxury brand text and high-end focus effects */
+/* ==========================================================================
+   CUSTOM SLEEK MODERN SCROLLBAR & NO-SCROLLBAR UTILITIES
+   ========================================================================== */
+
+/* Hide scrollbars utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Global sleek minimal scrollbar styling (replaces old Windows native scrollbars) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
 @keyframes luxury-shimmer {
   0% {
     background-position: 0% 50%;

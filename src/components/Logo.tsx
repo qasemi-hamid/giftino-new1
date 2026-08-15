@@ -12,22 +12,25 @@ export default function Logo({ className = "", size = "md", customSizeClass = ""
   let textClass = "text-2xl";
 
   if (size === "sm") {
-    textClass = "text-xl";
+    textClass = "text-xl sm:text-2xl";
   } else if (size === "md") {
-    textClass = "text-3xl";
+    textClass = "text-2xl sm:text-3xl";
   } else if (size === "lg") {
-    textClass = "text-5xl";
+    textClass = "text-4xl sm:text-5xl";
   } else if (size === "xl") {
-    textClass = "text-7xl";
+    textClass = "text-6xl sm:text-7xl";
   } else if (size === "custom" && customSizeClass) {
     textClass = customSizeClass;
   }
 
   return (
-    <div className={`inline-flex items-center select-none ${className}`}>
-      <span className={`font-fredoka font-bold text-white tracking-normal leading-none ${textClass}`}>
+    <div className={`inline-flex items-center select-none ${className}`} dir="ltr">
+      {/* Clean, Bold White English Text "giftino" like Giftful */}
+      <span className={`font-fredoka font-black text-white tracking-tight leading-none ${textClass} drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]`}>
         giftino
       </span>
     </div>
   );
 }
+
+

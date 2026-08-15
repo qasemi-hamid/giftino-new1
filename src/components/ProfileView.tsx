@@ -381,7 +381,9 @@ export default function ProfileView({
   const handleCopyInviteText = () => {
     if (!shareList) return;
     const registryLink = `https://giftino.ir/registry/${shareList.id}`;
-    const fullText = `${customInviteText}\n🔗 ${registryLink}`;
+    const fullText = isFa 
+      ? `لیست آرزوی «${shareList.title}» من در گیفتی‌نو:\n🔗 ${registryLink}`
+      : `Check out my registry "${shareList.title}" on Giftino:\n🔗 ${registryLink}`;
 
     navigator.clipboard.writeText(fullText);
     setCopiedInvite(true);
@@ -393,13 +395,16 @@ export default function ProfileView({
   const handleSystemShare = async () => {
     if (!shareList) return;
     const registryLink = `https://giftino.ir/registry/${shareList.id}`;
-    const fullText = `${customInviteText}\n🔗 ${registryLink}`;
+    const fullText = isFa 
+      ? `لیست آرزوی «${shareList.title}» من در گیفتی‌نو:\n🔗 ${registryLink}`
+      : `Check out my registry "${shareList.title}" on Giftino:\n🔗 ${registryLink}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: shareList.title,
           text: fullText,
+          url: registryLink,
         });
         localStorage.setItem("giftino_shared_invite", "true");
         setSharedInvite(true);
@@ -554,7 +559,7 @@ export default function ProfileView({
                     className="flex-1 sm:flex-initial py-2 px-4 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5" />
-                    <span>{isFa ? "ارسال دعوت‌نامه" : "Share Registry"}</span>
+                    <span>{isFa ? "اشتراک‌گذاری لیست" : "Share Registry"}</span>
                   </button>
                   
                   <button
@@ -655,19 +660,19 @@ export default function ProfileView({
                             : "bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/80 hover:border-zinc-700/80 hover:scale-[1.02] active:scale-[0.98] hover:bg-zinc-900/70 shadow-[0_8px_20px_rgba(0,0,0,0.25)]"
                         }`}
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <div className="flex justify-between items-start gap-2">
-                            <h4 className="text-xs font-black text-white leading-snug flex items-center gap-1.5">
+                            <h4 className="text-sm sm:text-base font-black text-white leading-snug flex items-center gap-1.5">
                               {item.title}
                             </h4>
                             <div className="flex items-center gap-1">
                               {item.isSecret && (
-                                <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/10 flex items-center gap-0.5">
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/10 flex items-center gap-0.5">
                                   <span>🤫</span>
                                   <span>{isFa ? "مخفی" : "Secret"}</span>
                                 </span>
                               )}
-                              <span className={`text-[8.5px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
+                              <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg uppercase tracking-wider ${
                                 item.priority === "high" 
                                   ? "bg-rose-500/10 text-rose-400 border border-rose-500/10" 
                                   : item.priority === "medium" 
@@ -682,53 +687,55 @@ export default function ProfileView({
                           </div>
 
                           {item.price && (
-                            <p className="text-[11px] font-mono font-black text-[#10b981]">
+                            <p className="text-sm font-mono font-black text-[#10b981]">
                               {isFa ? toPersianDigits(item.price.toLocaleString()) + " تومان" : item.price.toLocaleString() + " Tomans"}
                             </p>
                           )}
 
                           {item.notes && (
-                            <p className="text-[10px] text-zinc-400 bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-900/60 leading-relaxed">
+                            <p className="text-xs text-zinc-300 bg-zinc-950/60 p-3 rounded-2xl border border-zinc-900/80 leading-relaxed">
                               {item.notes}
                             </p>
                           )}
                         </div>
 
-                        {/* Direct store redirect */}
-                        <div className="pt-4 mt-4 border-t border-zinc-900/60 flex items-center justify-between gap-3">
-                          <div className="flex flex-col gap-1">
-                            {item.link ? (
-                              <a
-                                href={item.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[10px] font-bold text-[#10b981] hover:underline flex items-center gap-1"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>{isFa ? "مشاهده و خرید" : "Buy Link"}</span>
-                              </a>
-                            ) : (
-                              <span className="text-[9px] text-zinc-500">{isFa ? "فاقد لینک مستقیم" : "No Link"}</span>
-                            )}
+                        {/* Streamlined Card Actions Footer */}
+                        <div className="pt-3 mt-3 border-t border-zinc-900/80 flex flex-wrap items-center justify-between gap-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Primary Purchase & Price Comparison Button */}
                             <button
                               onClick={() => {
                                 setPriceSearchQuery(item.title);
                                 setPriceSearchTargetPrice(item.price);
                                 setPriceSearchOpen(true);
                               }}
-                              className="text-[10px] font-bold text-amber-400 hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 outline-none text-left"
+                              className="text-xs font-black text-zinc-950 bg-emerald-400 hover:bg-emerald-300 px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_4px_12px_rgba(16,185,129,0.2)] hover:scale-[1.02] active:scale-[0.98]"
                             >
-                              <span>🔍</span>
-                              <span>{isFa ? "جستجو و مقایسه قیمت" : "Search & Compare Prices"}</span>
+                              <span>🛒</span>
+                              <span>{isFa ? "مقایسه قیمت و خرید کادو" : "Compare Prices & Buy"}</span>
                             </button>
+
+                            {/* Optional Original Direct Link */}
+                            {item.link && (
+                              <a
+                                href={`/api/affiliate-redirect?store=direct&url=${encodeURIComponent(item.link)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-3 py-2 rounded-xl border border-zinc-800 flex items-center gap-1 transition-colors"
+                                title={isFa ? "مشاهده لینک پیشنهادی صاحب لیست" : "View owner's suggested link"}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>{isFa ? "لینک مستقیم" : "Direct Link"}</span>
+                              </a>
+                            )}
                           </div>
 
-                          {/* Action Button: Delete if owner, Reserve/Unreserve if guest */}
+                          {/* Reservation Status & Owner Controls */}
                           {!isGuestView ? (
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <div className="flex flex-row items-center gap-2">
                               {item.isReserved ? (
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                  <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
                                     🔒 {isFa ? "رزرو شده (سورپرایز 🤫)" : "Reserved (Surprise 🤫)"}
                                   </span>
                                   <button
@@ -747,7 +754,7 @@ export default function ProfileView({
                                         ? `🔔 پیام یادآوری ناشناس برای خریدار کادوی «${item.title}» ارسال شد تا رزرو خود را تایید یا تمدید کند!` 
                                         : `🔔 Anonymous reminder sent successfully to the buyer of "${item.title}"!`);
                                     }}
-                                    className="px-2 py-0.8 bg-amber-500 hover:bg-amber-400 text-zinc-950 text-[8.5px] font-black rounded-lg transition-colors cursor-pointer flex items-center gap-0.5"
+                                    className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-black rounded-xl transition-colors cursor-pointer flex items-center gap-1"
                                     title={isFa ? "ارسال یادآوری به خریدار کادو" : "Remind buyer to complete or extend reservation"}
                                   >
                                     <span>🔔</span>
@@ -755,15 +762,15 @@ export default function ProfileView({
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-[9px] text-zinc-500 font-bold uppercase">{isFa ? "آزاد" : "Available"}</span>
+                                <span className="text-xs text-zinc-500 font-bold uppercase px-2">{isFa ? "آزاد" : "Available"}</span>
                               )}
                               
                               <button
                                 onClick={() => handleDeleteItem(activeList.id, item.id)}
-                                className="p-1.5 hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
+                                className="p-2 hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 rounded-xl transition-colors cursor-pointer"
                                 title={isFa ? "حذف آرزو" : "Remove"}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           ) : (
@@ -772,12 +779,12 @@ export default function ProfileView({
                                 isReservedByMe ? (
                                   <button
                                     onClick={() => handleUnreserveItem(activeList.id, item.id)}
-                                    className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                                    className="px-4 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
                                   >
                                     {isFa ? "لغو رزرو کادو" : "Cancel Claim"}
                                   </button>
                                 ) : (
-                                  <span className="text-[10px] text-zinc-500 font-bold">🔒 {isFa ? "رزرو شده" : "Reserved"}</span>
+                                  <span className="text-xs text-zinc-500 font-bold">🔒 {isFa ? "رزرو شده" : "Reserved"}</span>
                                 )
                               ) : (
                                 <button
@@ -789,53 +796,13 @@ export default function ProfileView({
                                     }
                                     handleReserveItem(activeList.id, item.id);
                                   }}
-                                  className="px-3.5 py-1 bg-[#10b981] text-zinc-950 font-black text-[10px] rounded-xl hover:bg-emerald-400 transition-all cursor-pointer"
+                                  className="px-4 py-2 bg-[#10b981] text-zinc-950 font-black text-xs rounded-xl hover:bg-emerald-400 transition-all cursor-pointer shadow-md"
                                 >
                                   {isFa ? "🎁 رزرو کردن کادو" : "🎁 Claim Gift"}
                                 </button>
                               )}
                             </div>
                           )}
-                        </div>
-
-                        {/* Partner store quick searches */}
-                        <div className="mt-3 pt-2.5 border-t border-zinc-950 flex flex-wrap items-center gap-1.5">
-                          <span className="text-[8px] text-zinc-500">{isFa ? "🛒 خرید سریع با تخفیف:" : "🛒 Quick shop partner:"}</span>
-                          <a
-                            href={`https://www.digikala.com/search/?q=${encodeURIComponent(item.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[8px] font-bold text-red-400 hover:underline transition-colors"
-                          >
-                            {isFa ? "دیجی‌کالا" : "Digikala"}
-                          </a>
-                          <span className="text-[8px] text-zinc-700">•</span>
-                          <a
-                            href={`https://basalam.com/search?q=${encodeURIComponent(item.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[8px] font-bold text-amber-500 hover:underline transition-colors"
-                          >
-                            {isFa ? "باسلام" : "Basalam"}
-                          </a>
-                          <span className="text-[8px] text-zinc-700">•</span>
-                          <a
-                            href={`https://technolife.ir/product/list?search=${encodeURIComponent(item.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[8px] font-bold text-blue-400 hover:underline transition-colors"
-                          >
-                            {isFa ? "تکنولایف" : "Technolife"}
-                          </a>
-                          <span className="text-[8px] text-zinc-700">•</span>
-                          <a
-                            href={`https://snappshop.ir/search?q=${encodeURIComponent(item.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[8px] font-bold text-emerald-400 hover:underline transition-colors"
-                          >
-                            {isFa ? "اسنپ‌شاپ" : "SnappShop"}
-                          </a>
                         </div>
                       </div>
                     );
@@ -940,14 +907,32 @@ export default function ProfileView({
               {/* MODE 1: LISTS VIEW */}
               {viewMode === "lists" && (() => {
                 const nowStr = new Date().toISOString().split("T")[0];
-                const activeWishlists = wishlists.filter(wl => wl.occasionDate >= nowStr);
-                const pastWishlists = wishlists.filter(wl => wl.occasionDate < nowStr);
+                const activeWishlists = wishlists.filter(wl => !wl.occasionDate || wl.occasionDate >= nowStr);
+                const pastWishlists = wishlists.filter(wl => wl.occasionDate && wl.occasionDate < nowStr);
 
                 return (
                   <div className="space-y-4">
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider">
-                      {isFa ? "لیست‌های فعال" : "Active Wishlists"}
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider">
+                        {isFa 
+                          ? `لیست‌های فعال (${toPersianDigits(activeWishlists.length.toString())})` 
+                          : `Active Wishlists (${activeWishlists.length})`}
+                      </h3>
+
+                      {pastWishlists.length > 0 && (
+                        <button
+                          onClick={() => setShowPastListsModal(true)}
+                          className="text-[10px] font-bold text-zinc-400 hover:text-emerald-400 bg-zinc-900/80 hover:bg-zinc-850 px-3 py-1.5 rounded-xl border border-zinc-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <span>⏳</span>
+                          <span>
+                            {isFa 
+                              ? `لیست‌های گذشته (${toPersianDigits(pastWishlists.length.toString())})` 
+                              : `Past Lists (${pastWishlists.length})`}
+                          </span>
+                        </button>
+                      )}
+                    </div>
 
                     <div id="tour-wishlists" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Active wishlists mapped to collages */}
@@ -969,7 +954,7 @@ export default function ProfileView({
                               </h4>
                               <p className="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
-                                <span>{wl.occasionDate}</span>
+                                <span>{wl.occasionDate || (isFa ? "بدون تاریخ" : "No Date")}</span>
                               </p>
                               <p className="text-[10px] font-bold text-[#10b981]">
                                 {isFa 
@@ -982,28 +967,6 @@ export default function ProfileView({
                           </div>
                         );
                       })}
-
-                      {/* Past Lists Card */}
-                      <div 
-                        onClick={() => setShowPastListsModal(true)}
-                        className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/80 hover:border-[#10b981]/50 hover:bg-zinc-900/75 hover:scale-[1.02] active:scale-[0.98] rounded-3xl p-4 flex items-center gap-4 transition-all duration-300 cursor-pointer group shadow-[0_8px_24px_rgba(0,0,0,0.3)] select-none"
-                      >
-                        <div className="w-16 h-16 rounded-2xl bg-zinc-950/80 border border-zinc-850 flex items-center justify-center shrink-0 group-hover:bg-zinc-900 transition-all">
-                          <span className="text-2xl">⏳</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-black text-white group-hover:text-[#10b981] transition-colors">
-                            {isFa ? "لیست‌های گذشته" : "Past Lists"}
-                          </h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">
-                            {isFa 
-                              ? `${toPersianDigits(pastWishlists.length.toString())} لیست قدیمی` 
-                              : `${pastWishlists.length} Past List${pastWishlists.length !== 1 ? 's' : ''}`
-                            }
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-1 transition-transform rtl:rotate-180 shrink-0" />
-                      </div>
 
                       {/* Create Wishlist trigger card */}
                       <div
@@ -1301,306 +1264,153 @@ export default function ProfileView({
         </div>
       )}
 
-      {/* SHARE INVITATION POPUP */}
+      {/* GIFTFUL CLEAN SHARE REGISTRY MODAL */}
       {showShareModal && shareList && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <motion.div
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="w-full max-w-[360px] space-y-4"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-5 shadow-2xl relative"
           >
-            {/* Header: Close button with mysterious label */}
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">
-                {isFa ? "اشتراک‌گذاری و دعوت‌نامه" : "Share & Invitation"}
-              </span>
-              <button 
-                onClick={() => { setShowShareModal(false); setShareList(null); setShowPostcardShareOptions(false); setPostcardTab("text"); }} 
-                className="text-zinc-500 hover:text-white transition-colors p-1.5 bg-zinc-900 rounded-full border border-zinc-800"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* TAB SELECTOR */}
-            <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 border border-zinc-800 rounded-2xl text-[10px] font-bold">
-              <button
-                type="button"
-                onClick={() => { setPostcardTab("text"); setShowPostcardShareOptions(false); }}
-                className={`py-1.5 rounded-xl text-center cursor-pointer transition-all ${
-                  postcardTab === "text"
-                    ? "bg-zinc-800 text-[#10b981] font-extrabold shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {isFa ? "✉️ کارت پستال" : "✉️ Postcard"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPostcardTab("qr")}
-                className={`py-1.5 rounded-xl text-center cursor-pointer transition-all ${
-                  postcardTab === "qr"
-                    ? "bg-zinc-800 text-[#10b981] font-extrabold shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {isFa ? "📱 بارکد دعوت (QR)" : "📱 Invite QR"}
-              </button>
-            </div>
-
-            {postcardTab === "text" ? (
-              /* THE DIGITAL POSTCARD */
-              <div className="bg-zinc-950 border-2 border-zinc-800 rounded-3xl p-5 relative overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] aspect-[1.35] flex flex-col justify-between min-h-[240px]">
-                {/* Real-life high-quality festive celebration background photo with subtle dark blend */}
-                <img 
-                  src="https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=600&auto=format&fit=crop"
-                  alt="Celebration Sparkles Background"
-                  referrerPolicy="no-referrer"
-                  className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-screen pointer-events-none select-none"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/20 via-zinc-950/40 to-zinc-950 pointer-events-none" />
-
-                {/* Starry ambient background lights */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/5 blur-3xl rounded-full pointer-events-none" />
-                
-                {!showPostcardShareOptions ? (
-                  <>
-                    {/* Postcard Top Section */}
-                    <div className="flex justify-between items-start z-10">
-                      {/* Stamp/Seal on the top left */}
-                      <div className="flex flex-col items-start">
-                        <span className="text-[9px] text-zinc-500 font-serif italic select-none">
-                          Giftino Mail
-                        </span>
-                        <div className="w-16 h-px bg-gradient-to-r from-zinc-800 to-transparent mt-0.5" />
-                      </div>
-
-                      {/* Classic Postage Stamp on the top right (Jagged Edge aesthetic) */}
-                      <div className="border border-dashed border-zinc-700/80 p-1.5 rounded bg-zinc-900/50 flex flex-col items-center justify-center w-11 h-13 relative rotate-3 select-none">
-                        <div className="absolute inset-0 border border-zinc-800/40 rounded" />
-                        <span className="text-base">🔒</span>
-                        <span className="text-[7px] text-zinc-500 font-mono mt-0.5 font-bold">SECRET</span>
-                      </div>
-                    </div>
-
-                    {/* Postcard Body (Minimal, mysterious) */}
-                    <div className="text-center my-auto space-y-1 z-10 px-2">
-                      <p className="text-[13px] font-serif italic text-zinc-300 select-none">
-                        {isFa ? "« یک نفر آرزوهایش را اینجا پنهان کرده... »" : "“Someone has hidden their wishes here...”"}
-                      </p>
-                      <p className="text-[8px] text-zinc-600 font-mono uppercase tracking-widest select-none">
-                        {isFa ? "فقط برای چشمانِ تو" : "For your eyes only"}
-                      </p>
-                    </div>
-
-                    {/* Postcard Address Lines with Interactive Link Buttons */}
-                    <div className="relative pt-1 border-t border-zinc-900/80 z-10">
-                      {/* Simulated handwritten address lines */}
-                      <div className="space-y-1.5 select-none opacity-20">
-                        <div className="border-b border-dashed border-zinc-850 w-full h-3" />
-                        <div className="border-b border-dashed border-zinc-850 w-full h-3" />
-                      </div>
-
-                      {/* Interactive Button Grid */}
-                      <div className="absolute inset-x-0 top-1 flex gap-2">
-                        <button
-                          onClick={handleCopyInviteText}
-                          className="flex-1 bg-zinc-950/90 hover:bg-zinc-950 border border-zinc-800/80 hover:border-emerald-500/30 rounded-2xl p-2.5 flex items-center justify-center gap-1.5 shadow-xl transition-all group cursor-pointer text-[10px]"
-                        >
-                          <span className="text-xs shrink-0 group-hover:animate-pulse">🔑</span>
-                          <span className="text-zinc-400 group-hover:text-white font-black">
-                            {copiedInvite ? (isFa ? "کپی شد! ✔️" : "Copied! ✔️") : (isFa ? "کپی راز" : "Copy Secret")}
-                          </span>
-                        </button>
-
-                        <button
-                          onClick={() => setShowPostcardShareOptions(true)}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-2xl p-2.5 flex items-center justify-center gap-1.5 shadow-xl transition-all group cursor-pointer text-[10px] font-black"
-                        >
-                          <span className="text-xs shrink-0 group-hover:scale-110 transition-transform">✉️</span>
-                          <span>{isFa ? "ارسال راز..." : "Send Secret..."}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Share View Section */}
-                    <div className="flex justify-between items-center z-10 border-b border-zinc-900/60 pb-2">
-                      <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
-                        {isFa ? "گیرنده راز" : "Receiver of secret"}
-                      </span>
-                      <button
-                        onClick={() => setShowPostcardShareOptions(false)}
-                        className="px-2 py-0.5 text-[8px] font-bold text-zinc-400 hover:text-white bg-zinc-950 border border-zinc-850 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
-                      >
-                        <span>{isFa ? "← برگشت" : "← Back"}</span>
-                      </button>
-                    </div>
-
-                    {/* Wax Seal Icons for Sharing inside Card */}
-                    <div className="text-center my-auto space-y-3 z-10">
-                      <div className="grid grid-cols-4 gap-2 px-1">
-                        {/* SMS Seal */}
-                        <button
-                          onClick={() => {
-                            const registryLink = `https://giftino.ir/registry/${shareList.id}`;
-                            const fullText = isFa 
-                              ? `این یک کارت پستالِ راز است... 🔒 آرزوهای من درون این پیوند پنهان شده است:\n🔗 ${registryLink}`
-                              : `This is a secret postcard... 🔒 My wishes are hidden inside this link:\n🔗 ${registryLink}`;
-                            const url = `sms:?body=${encodeURIComponent(fullText)}`;
-                            localStorage.setItem("giftino_shared_invite", "true");
-                            setSharedInvite(true);
-                            window.open(url, "_blank");
-                          }}
-                          className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        >
-                          <div className="w-11 h-11 rounded-full bg-amber-950/20 border border-amber-500/20 hover:border-amber-500/50 flex items-center justify-center text-amber-400 text-sm shadow-md transition-all group-hover:scale-105 active:scale-95">
-                            💬
-                          </div>
-                          <span className="text-[8px] text-zinc-500 font-bold group-hover:text-zinc-400">
-                            {isFa ? "پیامک" : "SMS"}
-                          </span>
-                        </button>
-
-                        {/* Telegram Seal */}
-                        <button
-                          onClick={() => {
-                            const registryLink = `https://giftino.ir/registry/${shareList.id}`;
-                            const text = isFa 
-                              ? `این یک کارت پستالِ راز است... 🔒 آرزوهای من درون این پیوند پنهان شده است:`
-                              : `This is a secret postcard... 🔒 My wishes are hidden inside this link:`;
-                            const url = `https://t.me/share/url?url=${encodeURIComponent(registryLink)}&text=${encodeURIComponent(text)}`;
-                            localStorage.setItem("giftino_shared_invite", "true");
-                            setSharedInvite(true);
-                            window.open(url, "_blank");
-                          }}
-                          className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        >
-                          <div className="w-11 h-11 rounded-full bg-sky-950/20 border border-sky-500/20 hover:border-sky-500/50 flex items-center justify-center text-sky-400 text-sm shadow-md transition-all group-hover:scale-105 active:scale-95">
-                            ✈️
-                          </div>
-                          <span className="text-[8px] text-zinc-500 font-bold group-hover:text-zinc-400">
-                            {isFa ? "تلگرام" : "Telegram"}
-                          </span>
-                        </button>
-
-                        {/* WhatsApp Seal */}
-                        <button
-                          onClick={() => {
-                            const registryLink = `https://giftino.ir/registry/${shareList.id}`;
-                            const fullText = isFa 
-                              ? `این یک کارت پستالِ راز است... 🔒 آرزوهای من درون این پیوند پنهان شده است:\n🔗 ${registryLink}`
-                              : `This is a secret postcard... 🔒 My wishes are hidden inside this link:\n🔗 ${registryLink}`;
-                            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullText)}`;
-                            localStorage.setItem("giftino_shared_invite", "true");
-                            setSharedInvite(true);
-                            window.open(url, "_blank");
-                          }}
-                          className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        >
-                          <div className="w-11 h-11 rounded-full bg-emerald-950/20 border border-emerald-500/20 hover:border-emerald-500/50 flex items-center justify-center text-emerald-400 text-sm shadow-md transition-all group-hover:scale-105 active:scale-95">
-                            🟢
-                          </div>
-                          <span className="text-[8px] text-zinc-500 font-bold group-hover:text-zinc-400">
-                            {isFa ? "واتساپ" : "WhatsApp"}
-                          </span>
-                        </button>
-
-                        {/* System Native Share Seal */}
-                        <button
-                          onClick={handleSystemShare}
-                          className="flex flex-col items-center gap-1.5 group cursor-pointer"
-                        >
-                          <div className="w-11 h-11 rounded-full bg-purple-950/20 border border-purple-500/20 hover:border-purple-500/50 flex items-center justify-center text-purple-400 text-sm shadow-md transition-all group-hover:scale-105 active:scale-95">
-                            📤
-                          </div>
-                          <span className="text-[8px] text-zinc-500 font-bold group-hover:text-zinc-400">
-                            {isFa ? "سایر" : "Other"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Secret signature lock design */}
-                    <div className="flex justify-center select-none opacity-20 z-10">
-                      <span className="text-[7px] font-mono text-zinc-500 tracking-widest uppercase">
-                        - SECURED WITH LOVE -
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              /* THE QR CODE BARCODE CARD */
-              <div className="bg-zinc-950 border-2 border-zinc-800 rounded-3xl p-5 relative overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.8)] flex flex-col justify-between items-center min-h-[250px] space-y-3">
-                <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-zinc-950/95 to-zinc-900 pointer-events-none" />
-
-                {/* Stamp/Seal on the top left */}
-                <div className="flex justify-between items-center w-full z-10 border-b border-zinc-900 pb-1.5">
-                  <span className="text-[9px] text-zinc-500 font-serif italic select-none">
-                    Giftino Barcode Card
-                  </span>
-                  <span className="text-[8px] font-mono text-emerald-400 bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-900/40">
-                    SCAN TO CONNECT
-                  </span>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[#10b981] flex items-center justify-center">
+                  <Share2 className="w-4 h-4" />
                 </div>
-
-                <div className="bg-white p-3 rounded-2xl shadow-[0_10px_25px_rgba(16,185,129,0.15)] border-2 border-zinc-950 flex flex-col items-center justify-center relative group z-10">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`https://giftino.ir/registry/${shareList.id}`)}`}
-                    alt="Giftino Registry Barcode"
-                    referrerPolicy="no-referrer"
-                    className="w-28 h-28 object-contain"
-                  />
-                </div>
-
-                <div className="text-center space-y-1.5 z-10 w-full px-1">
-                  <p className="text-[10px] text-zinc-400 leading-relaxed">
-                    {isFa
-                      ? "دوستان شما می‌توانند با اسکن این بارکد، فوراً آرزوهای شما را تماشا یا رزرو کنند!"
-                      : "Scan with any phone camera to view or claim gifts instantly!"}
+                <div>
+                  <h3 className="text-sm font-black text-white">
+                    {isFa ? "اشتراک‌گذاری لیست" : "Share Registry"}
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 font-medium truncate max-w-[200px]">
+                    {shareList.title}
                   </p>
-                  
-                  {/* Download button inside the postcard frame */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        setDownloadingProfileQR(true);
-                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(`https://giftino.ir/registry/${shareList.id}`)}`;
-                        const response = await fetch(qrUrl);
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `giftino-${shareList.id}-qr.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                      } catch (err) {
-                        window.open(`https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(`https://giftino.ir/registry/${shareList.id}`)}`, "_blank");
-                      } finally {
-                        setDownloadingProfileQR(false);
-                      }
-                    }}
-                    disabled={downloadingProfileQR}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 text-zinc-950 disabled:text-zinc-600 rounded-xl text-[10px] font-black shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {downloadingProfileQR ? (
-                      <span>{isFa ? "در حال آماده‌سازی..." : "Preparing..."}</span>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{isFa ? "دانلود بارکد اختصاصی" : "Download Barcode"}</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
-            )}
+              <button
+                onClick={() => { setShowShareModal(false); setShareList(null); }}
+                className="w-8 h-8 rounded-full bg-zinc-800/80 hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Link Copy Bar */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                {isFa ? "لینک اختصاصی لیست" : "Registry Link"}
+              </label>
+              <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-2 pl-3">
+                <span className="text-xs text-zinc-300 font-mono truncate dir-ltr flex-1 select-all">
+                  {`https://giftino.ir/registry/${shareList.id}`}
+                </span>
+                <button
+                  onClick={handleCopyInviteText}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                    copiedInvite
+                      ? "bg-emerald-500 text-zinc-950"
+                      : "bg-zinc-800 hover:bg-zinc-700 text-white"
+                  }`}
+                >
+                  {copiedInvite ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{isFa ? "کپی شد" : "Copied"}</span>
+                    </>
+                  ) : (
+                    <span>{isFa ? "کپی پیوند" : "Copy Link"}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Direct Share Options */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                {isFa ? "اشتراک سریع" : "Quick Share"}
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {/* Telegram */}
+                <button
+                  onClick={() => {
+                    const registryLink = `https://giftino.ir/registry/${shareList.id}`;
+                    const text = isFa 
+                      ? `لیست آرزوی «${shareList.title}» من در گیفتی‌نو:`
+                      : `Check out my registry "${shareList.title}" on Giftino:`;
+                    const url = `https://t.me/share/url?url=${encodeURIComponent(registryLink)}&text=${encodeURIComponent(text)}`;
+                    localStorage.setItem("giftino_shared_invite", "true");
+                    setSharedInvite(true);
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 hover:border-sky-500/40 hover:bg-sky-500/5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                    ✈️
+                  </div>
+                  <span className="text-[10px] text-zinc-400 group-hover:text-white font-bold">
+                    {isFa ? "تلگرام" : "Telegram"}
+                  </span>
+                </button>
+
+                {/* WhatsApp */}
+                <button
+                  onClick={() => {
+                    const registryLink = `https://giftino.ir/registry/${shareList.id}`;
+                    const fullText = isFa 
+                      ? `لیست آرزوی «${shareList.title}» من در گیفتی‌نو:\n🔗 ${registryLink}`
+                      : `Check out my registry "${shareList.title}" on Giftino:\n🔗 ${registryLink}`;
+                    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullText)}`;
+                    localStorage.setItem("giftino_shared_invite", "true");
+                    setSharedInvite(true);
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 hover:border-emerald-500/40 hover:bg-emerald-500/5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                    🟢
+                  </div>
+                  <span className="text-[10px] text-zinc-400 group-hover:text-white font-bold">
+                    {isFa ? "واتساپ" : "WhatsApp"}
+                  </span>
+                </button>
+
+                {/* SMS */}
+                <button
+                  onClick={() => {
+                    const registryLink = `https://giftino.ir/registry/${shareList.id}`;
+                    const fullText = isFa 
+                      ? `لیست آرزوی «${shareList.title}» من در گیفتی‌نو:\n🔗 ${registryLink}`
+                      : `Check out my registry "${shareList.title}" on Giftino:\n🔗 ${registryLink}`;
+                    const url = `sms:?body=${encodeURIComponent(fullText)}`;
+                    localStorage.setItem("giftino_shared_invite", "true");
+                    setSharedInvite(true);
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                    💬
+                  </div>
+                  <span className="text-[10px] text-zinc-400 group-hover:text-white font-bold">
+                    {isFa ? "پیامک" : "SMS"}
+                  </span>
+                </button>
+
+                {/* System Native Share */}
+                <button
+                  onClick={handleSystemShare}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 hover:border-purple-500/40 hover:bg-purple-500/5 transition-all group cursor-pointer"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform">
+                    📤
+                  </div>
+                  <span className="text-[10px] text-zinc-400 group-hover:text-white font-bold">
+                    {isFa ? "سایر" : "Other"}
+                  </span>
+                </button>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

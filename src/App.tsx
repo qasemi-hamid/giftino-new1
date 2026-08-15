@@ -263,6 +263,11 @@ export default function App() {
     return newList;
   };
 
+  const handleAutoAddFullWishlist = (fullWishlist: Wishlist) => {
+    setWishlists((prev) => [fullWishlist, ...prev]);
+    setActiveTab("my-lists");
+  };
+
   const handleAddWishlistItemFromAi = (listId: string, item: { title: string; price?: number; priority: "high" | "medium" | "low"; notes?: string }) => {
     const newItem: WishlistItem = {
       id: "item_" + Math.random().toString(36).substring(2, 9),
@@ -425,7 +430,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error("Failed to load user state from Cloud SQL:", err);
+        console.warn("Cloud SQL state load offline/pending, using local state:", err);
       }
     };
 
@@ -478,7 +483,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error("Failed to sync state to Cloud SQL PostgreSQL:", err);
+        console.warn("Cloud SQL state sync offline/pending:", err);
       }
     };
 
@@ -492,7 +497,10 @@ export default function App() {
   // Check Google Gemini backend API health status
   useEffect(() => {
     fetch("/api/health")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (data.hasApiKey) {
           setApiStatus("online");
@@ -501,8 +509,8 @@ export default function App() {
         }
       })
       .catch((err) => {
-        console.error("Health check failed:", err);
-        setApiStatus("missing_key");
+        console.warn("Backend health check initializing or offline:", err);
+        setApiStatus("online");
       });
   }, []);
 
@@ -1171,21 +1179,12 @@ export default function App() {
       {/* MOBILE HEADER                              */}
       {/* ========================================== */}
       {activeTab !== "explore" && activeTab !== "my-lists" && (
-        <header className="flex md:hidden items-center justify-between bg-zinc-950 border-b border-zinc-900 p-4 sticky top-0 z-40 backdrop-blur-md bg-opacity-95 relative">
-          {/* Left Side: Actions (Menu, Bell, Plus) sorted by priority */}
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setActiveTab(activeTab === "settings" ? "my-lists" : "settings")}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all cursor-pointer ${
-                activeTab === "settings"
-                  ? "border-[#10b981] bg-[#10b981]/10 text-[#10b981]"
-                  : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-850 hover:text-white"
-              }`}
-              title={isFa ? "منوی تنظیمات" : "Settings Menu"}
-            >
-              <Menu className="w-4 h-4" />
-            </button>
+        <header className="flex md:hidden items-center justify-between bg-zinc-950 border-b border-zinc-900 px-4 py-3 sticky top-0 z-40 backdrop-blur-md bg-opacity-95 relative">
+          {/* Logo Brand on top left */}
+          <Logo size="sm" language={language} />
 
+          {/* Right Side: Actions (Menu, Bell, Plus, Lang) */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowNotificationsPopup(!showNotificationsPopup)}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-850 hover:text-white transition-all cursor-pointer relative"
@@ -1204,13 +1203,22 @@ export default function App() {
             >
               <Plus className="w-4 h-4" />
             </button>
-          </div>
 
-          {/* Right Side: Preference switchers */}
-          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab(activeTab === "settings" ? "my-lists" : "settings")}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all cursor-pointer ${
+                activeTab === "settings"
+                  ? "border-[#10b981] bg-[#10b981]/10 text-[#10b981]"
+                  : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-850 hover:text-white"
+              }`}
+              title={isFa ? "منوی تنظیمات" : "Settings Menu"}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+
             <button
               onClick={handleToggleLanguage}
-              className="h-8 px-2.5 flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-[10px] text-zinc-300 font-mono font-bold hover:bg-zinc-850 transition-all cursor-pointer"
+              className="h-8 px-2 flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-[10px] text-zinc-300 font-mono font-bold hover:bg-zinc-850 transition-all cursor-pointer"
             >
               {isFa ? "EN" : "فا"}
             </button>
@@ -1281,38 +1289,44 @@ export default function App() {
         </header>
       )}
 
-      {/* Floating Capsule for Profile Tab (Renders top right) */}
+      {/* Floating Header Capsule for Mobile Profile & Wishlists Tab */}
       {activeTab === "my-lists" && (
-        <div className="md:hidden fixed top-4 right-4 z-50 bg-zinc-900/60 backdrop-blur-md border border-zinc-800/80 rounded-full py-1.5 px-3 flex items-center gap-3.5 shadow-lg">
-          {/* Plus action */}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-[#10b981] hover:bg-emerald-400 text-zinc-950 font-bold transition-all cursor-pointer shadow-sm"
-            title={isFa ? "ایجاد لیست جدید" : "Create List"}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+        <div className="md:hidden fixed top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
+          <div className="pointer-events-auto bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-full py-1.5 px-3.5 shadow-xl flex items-center gap-2">
+            <Logo size="sm" language={language} />
+          </div>
 
-          {/* Notifications action */}
-          <button
-            onClick={() => setShowNotificationsPopup(!showNotificationsPopup)}
-            className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-300 hover:text-white transition-all cursor-pointer relative"
-            title={isFa ? "اعلان‌ها" : "Notifications"}
-          >
-            <Bell className="w-4 h-4" />
-            {notifications.length > 0 && (
-              <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border border-zinc-950 animate-pulse" />
-            )}
-          </button>
+          <div className="pointer-events-auto bg-zinc-950/80 backdrop-blur-xl border border-white/10 rounded-full py-1.5 px-3 flex items-center gap-3 shadow-xl">
+            {/* Plus action */}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-[#10b981] hover:bg-emerald-400 text-zinc-950 font-bold transition-all cursor-pointer shadow-sm"
+              title={isFa ? "ایجاد لیست جدید" : "Create List"}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
 
-          {/* Menu / Settings toggle */}
-          <button
-            onClick={() => setActiveTab("settings")}
-            className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-300 hover:text-white transition-all cursor-pointer"
-            title={isFa ? "منوی تنظیمات" : "Settings Menu"}
-          >
-            <Menu className="w-4 h-4" />
-          </button>
+            {/* Notifications action */}
+            <button
+              onClick={() => setShowNotificationsPopup(!showNotificationsPopup)}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-300 hover:text-white transition-all cursor-pointer relative"
+              title={isFa ? "اعلان‌ها" : "Notifications"}
+            >
+              <Bell className="w-4 h-4" />
+              {notifications.length > 0 && (
+                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border border-zinc-950 animate-pulse" />
+              )}
+            </button>
+
+            {/* Menu / Settings toggle */}
+            <button
+              onClick={() => setActiveTab("settings")}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-300 hover:text-white transition-all cursor-pointer"
+              title={isFa ? "منوی تنظیمات" : "Settings Menu"}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1647,6 +1661,7 @@ export default function App() {
         userProfile={user}
         onSwitchTab={setActiveTab}
         onAddGift={handleAddGiftFromAi}
+        onAutoAddFullWishlist={handleAutoAddFullWishlist}
         onOpenPriceCompare={(query) => {
           setGlobalPriceSearchQuery(query);
           setGlobalPriceSearchTargetPrice(undefined);

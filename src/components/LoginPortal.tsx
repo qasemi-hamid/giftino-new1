@@ -574,7 +574,7 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
 
       {/* Top Bar Floating Header */}
       <div className="absolute top-5 left-5 right-5 flex items-center justify-between max-w-5xl mx-auto z-20">
-        <Logo size="sm" showText={true} language={language} />
+        <Logo size="md" showText={true} language={language} />
 
         <button
           onClick={onToggleLanguage}
@@ -593,9 +593,9 @@ export default function LoginPortal({ onLogin, language, onToggleLanguage }: Log
         className="w-full max-w-[420px] bg-[#18181b]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.8)] relative z-10 my-12"
       >
         {/* Card Header Title */}
-        <div className="text-center space-y-2 mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 border border-white/10 mb-1 text-[#10b981]">
-            <Gift className="w-6 h-6" />
+        <div className="text-center space-y-3 mb-6">
+          <div className="flex justify-center mb-1">
+            <Logo size="lg" language={language} />
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
